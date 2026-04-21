@@ -5,13 +5,7 @@ const list = document.getElementById('list');
 const form = document.getElementById('form');
 const text = document.getElementById('text');
 const amount = document.getElementById('amount');
-
-// const dummyTransactions = [
-//   { id: 1, text: 'Flower', amount: -20 },
-//   { id: 2, text: 'Salary', amount: 300 },
-//   { id: 3, text: 'Book', amount: -10 },
-//   { id: 4, text: 'Camera', amount: 150 }
-// ];
+const type = document.getElementById('type');
 
 const localStorageTransactions = JSON.parse(
   localStorage.getItem('transactions')
@@ -24,25 +18,40 @@ let transactions =
 function addTransaction(e) {
   e.preventDefault();
 
-  if (text.value.trim() === '' || amount.value.trim() === '') {
-    alert('Please add a text and amount');
+  if (
+    text.value.trim() === '' ||
+    amount.value.trim() === '' ||
+    type.value.trim() === ''
+  ) {
+    alert('Please add a text, amount and type');
   } else {
+    let enteredAmount = Math.abs(amount.value);
+
+    // 🔥 FIX: control sign based on TYPE
+    if (type.value.toLowerCase() === 'expense') {
+      enteredAmount = -enteredAmount;
+    } else if (type.value.toLowerCase() === 'income') {
+      enteredAmount = +enteredAmount;
+    } else {
+      alert('Type must be INCOME or EXPENSE');
+      return;
+    }
+
     const transaction = {
       id: generateID(),
       text: text.value,
-      amount: +amount.value
+      amount: enteredAmount
     };
 
     transactions.push(transaction);
 
     addTransactionDOM(transaction);
-
     updateValues();
-
     updateLocalStorage();
 
     text.value = '';
     amount.value = '';
+    type.value = '';
   }
 }
 
@@ -53,20 +62,19 @@ function generateID() {
 
 // Add transactions to DOM list
 function addTransactionDOM(transaction) {
-  // Get sign
   const sign = transaction.amount < 0 ? '-' : '+';
 
   const item = document.createElement('li');
 
-  // Add class based on value
   item.classList.add(transaction.amount < 0 ? 'minus' : 'plus');
 
   item.innerHTML = `
     ${transaction.text} <span>${sign}${Math.abs(
     transaction.amount
-  )}</span> <button class="delete-btn" onclick="removeTransaction(${
-    transaction.id
-  })">x</button>
+  )}</span> 
+    <button class="delete-btn" onclick="removeTransaction(${
+      transaction.id
+    })">x</button>
   `;
 
   list.appendChild(item);
@@ -76,16 +84,15 @@ function addTransactionDOM(transaction) {
 function updateValues() {
   const amounts = transactions.map(transaction => transaction.amount);
 
-  const total = amounts.reduce((acc, item) => (acc += item), 0).toFixed(2);
+  const total = amounts.reduce((acc, item) => acc + item, 0).toFixed(2);
 
   const income = amounts
     .filter(item => item > 0)
-    .reduce((acc, item) => (acc += item), 0)
+    .reduce((acc, item) => acc + item, 0)
     .toFixed(2);
 
   const expense = (
-    amounts.filter(item => item < 0).reduce((acc, item) => (acc += item), 0) *
-    -1
+    amounts.filter(item => item < 0).reduce((acc, item) => acc + item, 0) * -1
   ).toFixed(2);
 
   balance.innerText = `$${total}`;
@@ -95,14 +102,15 @@ function updateValues() {
 
 // Remove transaction by ID
 function removeTransaction(id) {
-  transactions = transactions.filter(transaction => transaction.id !== id);
+  transactions = transactions.filter(
+    transaction => transaction.id !== id
+  );
 
   updateLocalStorage();
-
   init();
 }
 
-// Update local storage transactions
+// Update local storage
 function updateLocalStorage() {
   localStorage.setItem('transactions', JSON.stringify(transactions));
 }
@@ -110,7 +118,6 @@ function updateLocalStorage() {
 // Init app
 function init() {
   list.innerHTML = '';
-
   transactions.forEach(addTransactionDOM);
   updateValues();
 }
